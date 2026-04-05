@@ -53,6 +53,7 @@ export function AppStore() {
       const data = await res.json();
       if (!data.error) {
         setPackages(prev => prev.map(p => p.name === pkg.name ? { ...p, installed: true } : p));
+        window.dispatchEvent(new CustomEvent('pers-updated'));
       }
     } catch (e) {
       console.error(e);
@@ -71,6 +72,7 @@ export function AppStore() {
       const data = await res.json();
       if (!data.error) {
         setPackages(prev => prev.map(p => p.name === pkg.name ? { ...p, installed: false } : p));
+        window.dispatchEvent(new CustomEvent('pers-updated'));
       }
     } catch (e) {
       console.error(e);

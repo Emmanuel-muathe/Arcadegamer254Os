@@ -38,10 +38,13 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
 
   const openWindow = (id: string, title: string, component: string, url?: string) => {
     setWindows(prev => {
-      if (prev.find(w => w.id === id)) {
-        focusWindow(id);
-        return prev;
+      const existing = prev.find(w => w.id === id);
+      if (existing) {
+        const newZ = highestZ + 1;
+        setHighestZ(newZ);
+        return prev.map(w => w.id === id ? { ...w, zIndex: newZ, status: w.status === 'minimized' ? 'normal' : w.status } : w);
       }
+      
       const newZ = highestZ + 1;
       setHighestZ(newZ);
       return [...prev, {

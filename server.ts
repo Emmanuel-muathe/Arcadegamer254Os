@@ -519,9 +519,18 @@ async function startServer() {
     dockPosition: 'Bottom',
     dockAutoHide: false,
     desktopApps: [
-      { name: "Terminal", exec: "internal:terminal", icon: "terminal", category: "System" },
+      { name: "Arcade Terminal", exec: "internal:terminal", icon: "terminal", category: "System" },
       { name: "App Store", exec: "internal:appstore", icon: "store", category: "System" },
-      { name: "Arcade Browser", exec: "internal:browser", icon: "browser", category: "Internet" }
+      { name: "File Explorer", exec: "internal:files", icon: "folder", category: "System" },
+      { name: "System Monitor", exec: "internal:monitor", icon: "activity", category: "System" },
+      { name: "Settings", exec: "internal:settings", icon: "settings", category: "System" }
+    ],
+    dockApps: [
+      { name: "Arcade Terminal", exec: "internal:terminal", icon: "terminal", category: "System" },
+      { name: "App Store", exec: "internal:appstore", icon: "store", category: "System" },
+      { name: "File Explorer", exec: "internal:files", icon: "folder", category: "System" },
+      { name: "Arcade Browser", exec: "internal:browser", icon: "browser", category: "Internet" },
+      { name: "Settings", exec: "internal:settings", icon: "settings", category: "System" }
     ],
     systemSound: true
   };
@@ -529,6 +538,13 @@ async function startServer() {
   try {
     if (fs.existsSync(settingsFile)) {
       personalization = { ...personalization, ...JSON.parse(fs.readFileSync(settingsFile, 'utf-8')) };
+      // Migration: Rename Terminal to Arcade Terminal
+      if (personalization.desktopApps) {
+        personalization.desktopApps = personalization.desktopApps.map((app: any) => app.name === 'Terminal' ? { ...app, name: 'Arcade Terminal' } : app);
+      }
+      if (personalization.dockApps) {
+        personalization.dockApps = personalization.dockApps.map((app: any) => app.name === 'Terminal' ? { ...app, name: 'Arcade Terminal' } : app);
+      }
     } else {
       if (!fs.existsSync(path.dirname(settingsFile))) {
         fs.mkdirSync(path.dirname(settingsFile), { recursive: true });
@@ -565,7 +581,7 @@ async function startServer() {
       const apps: any[] = [];
       
       const builtInApps = [
-        { name: "Terminal", exec: "internal:terminal", icon: "terminal", category: "System" },
+        { name: "Arcade Terminal", exec: "internal:terminal", icon: "terminal", category: "System" },
         { name: "Settings", exec: "internal:settings", icon: "settings", category: "System" },
         { name: "App Store", exec: "internal:appstore", icon: "store", category: "System" },
         { name: "System Monitor", exec: "internal:monitor", icon: "activity", category: "System" },
@@ -757,24 +773,29 @@ async function startServer() {
         try {
           try {
             const { stdout } = await execAsync(`pacman -Ss ${query}`);
-            const lines = stdout.split('\\n');
+            const lines = stdout.split('\n');
             for (let i = 0; i < lines.length; i += 2) {
               if (!lines[i] || !lines[i].includes('/')) continue;
               const [repoAndName, version, ...rest] = lines[i].split(' ');
               const installed = rest.join(' ').includes('[installed');
               const description = lines[i+1]?.trim() || '';
-              results.push({ name: repoAndName.split('/')[1] || repoAndName, version, description, installed: !!installed, isWebApp: false, category: 'System', exec: '', icon: 'box' });
+              const name = repoAndName.split('/')[1] || repoAndName;
+              if (!results.find(p => p.name === name)) {
+                results.push({ name, version, description, installed: !!installed, isWebApp: false, category: 'System', exec: name, icon: 'box' });
+              }
             }
           } catch (pacmanErr) {
             // Fallback to apt
             const { stdout } = await execAsync(`apt-cache search ${query} | head -n 20`);
-            const lines = stdout.split('\\n').filter(Boolean);
+            const lines = stdout.split('\n').filter(Boolean);
             for (const line of lines) {
               const parts = line.split(' - ');
               if (parts.length >= 2) {
                 const name = parts[0].trim();
                 const description = parts.slice(1).join(' - ').trim();
-                results.push({ name, version: 'latest', description, installed: false, isWebApp: false, category: 'System', exec: '', icon: 'box' });
+                if (!results.find(p => p.name === name)) {
+                  results.push({ name, version: 'latest', description, installed: false, isWebApp: false, category: 'System', exec: name, icon: 'box' });
+                }
               }
             }
           }
@@ -817,6 +838,17 @@ async function startServer() {
           const appsDir = path.join(process.env.HOME || "/root", ".local/share/applications");
           if (!fs.existsSync(appsDir)) fs.mkdirSync(appsDir, { recursive: true });
           fs.writeFileSync(path.join(appsDir, `${pkg}.desktop`), desktopFileContent);
+          
+          // Update personalization
+          const newApp = { name: packageInfo.name, exec: packageInfo.exec, icon: packageInfo.icon, category: packageInfo.category };
+          if (!personalization.desktopApps.find(a => a.name === newApp.name)) {
+            personalization.desktopApps.push(newApp);
+          }
+          if (!personalization.dockApps.find(a => a.name === newApp.name)) {
+            personalization.dockApps.push(newApp);
+          }
+          fs.writeFileSync(settingsFile, JSON.stringify(personalization, null, 2));
+          
           return res.json({ success: true });
         }
       }
@@ -824,9 +856,25 @@ async function startServer() {
       // System package install
       try {
         await execAsync(`pacman -S --noconfirm ${pkg}`);
+        
+        // Update personalization for native app
+        const newApp = { name: pkg, exec: pkg, icon: 'box', category: 'System' };
+        if (!personalization.desktopApps.find(a => a.name === newApp.name)) {
+          personalization.desktopApps.push(newApp);
+        }
+        fs.writeFileSync(settingsFile, JSON.stringify(personalization, null, 2));
+        
         res.json({ success: true });
       } catch (pacmanErr) {
         await execAsync(`DEBIAN_FRONTEND=noninteractive apt-get install -y ${pkg}`);
+        
+        // Update personalization for native app
+        const newApp = { name: pkg, exec: pkg, icon: 'box', category: 'System' };
+        if (!personalization.desktopApps.find(a => a.name === newApp.name)) {
+          personalization.desktopApps.push(newApp);
+        }
+        fs.writeFileSync(settingsFile, JSON.stringify(personalization, null, 2));
+        
         res.json({ success: true });
       }
     } catch (error: any) { res.status(500).json({ error: error.message }); }
@@ -840,6 +888,12 @@ async function startServer() {
         const desktopFile = path.join(process.env.HOME || "/root", ".local/share/applications", `${pkg}.desktop`);
         if (fs.existsSync(desktopFile)) {
           fs.unlinkSync(desktopFile);
+          
+          // Update personalization
+          personalization.desktopApps = personalization.desktopApps.filter(a => a.name.toLowerCase() !== pkg.toLowerCase());
+          personalization.dockApps = personalization.dockApps.filter(a => a.name.toLowerCase() !== pkg.toLowerCase());
+          fs.writeFileSync(settingsFile, JSON.stringify(personalization, null, 2));
+          
           return res.json({ success: true });
         }
       }

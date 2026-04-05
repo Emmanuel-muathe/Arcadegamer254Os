@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Arch Linux React DE - Termux Installation Script
-# This script installs the necessary dependencies to run the React DE shell in Termux.
+# Arcadegamer254Os - Termux Installation Script
+# This script installs the necessary dependencies to run the OS shell in Termux.
 
-echo "--- Arch Linux React DE: Termux Installer ---"
+echo "--- Arcadegamer254Os: Termux Installer ---"
 
 # Update packages
 pkg update && pkg upgrade -y
@@ -17,9 +17,12 @@ pkg install -y pulseaudio
 # Install build tools
 pkg install -y make python binutils
 
-# Clone the repository (if not already in it)
-# git clone <repo_url>
-# cd <repo_dir>
+# Clone the repository
+if [ ! -d "Arcadegamer254Os" ]; then
+  git clone https://github.com/Emmanuel-muathe/Arcadegamer254Os
+fi
+
+cd Arcadegamer254Os
 
 # Install npm dependencies
 npm install

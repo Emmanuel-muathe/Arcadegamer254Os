@@ -36,19 +36,20 @@ export function Window({ window, children, index = 0, totalWindows = 1 }: { wind
         x, y, 
         width: window.width, height: window.height, 
         scale,
+        opacity: 1,
         transition: { type: 'spring', stiffness: 300, damping: 30 } 
       });
       return;
     }
 
     if (window.status === 'maximized') {
-      controls.start({ x: 0, y: 0, width: '100vw', height: 'calc(100vh - 3rem)', scale: 1, transition: { type: 'spring', stiffness: 300, damping: 30 } });
+      controls.start({ x: 0, y: 0, width: '100vw', height: 'calc(100vh - 3rem)', scale: 1, opacity: 1, transition: { type: 'spring', stiffness: 300, damping: 30 } });
     } else if (window.status === 'snapped-left') {
-      controls.start({ x: 0, y: 0, width: '50vw', height: 'calc(100vh - 3rem)', scale: 1, transition: { type: 'spring', stiffness: 300, damping: 30 } });
+      controls.start({ x: 0, y: 0, width: '50vw', height: 'calc(100vh - 3rem)', scale: 1, opacity: 1, transition: { type: 'spring', stiffness: 300, damping: 30 } });
     } else if (window.status === 'snapped-right') {
-      controls.start({ x: '50vw', y: 0, width: '50vw', height: 'calc(100vh - 3rem)', scale: 1, transition: { type: 'spring', stiffness: 300, damping: 30 } });
+      controls.start({ x: '50vw', y: 0, width: '50vw', height: 'calc(100vh - 3rem)', scale: 1, opacity: 1, transition: { type: 'spring', stiffness: 300, damping: 30 } });
     } else {
-      controls.start({ x: window.x, y: window.y, width: window.width, height: window.height, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 30 } });
+      controls.start({ x: window.x, y: window.y, width: window.width, height: window.height, scale: 1, opacity: 1, transition: { type: 'spring', stiffness: 300, damping: 30 } });
     }
   }, [window.status, window.x, window.y, window.width, window.height, overviewMode, controls, index, totalWindows]);
 

@@ -1,17 +1,44 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Box, Power, Plus, ChevronUp } from 'lucide-react';
+import { Search, Box, Power, Plus, ChevronUp, Pin, PinOff, ExternalLink } from 'lucide-react';
 import { useWindowManager } from '../contexts/WindowManagerContext';
 import { getAppIcon } from '../utils/icons';
 import { playSound } from '../utils/sounds';
 import { getEmbedUrl } from '../utils/url';
+import { ContextMenu, ContextMenuItem } from './ContextMenu';
 
-export function AppLauncher({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export function AppLauncher({ isOpen, onClose, pers, onTogglePin }: { isOpen: boolean; onClose: () => void; pers: any; onTogglePin: (app: any) => void }) {
   const [apps, setApps] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const { openWindow } = useWindowManager();
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
+  const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
+  const [selectedApp, setSelectedApp] = useState<any>(null);
+  const longPressTimer = useRef<any>(null);
+
+  const handlePointerDown = (e: React.PointerEvent, app: any) => {
+    longPressTimer.current = setTimeout(() => {
+      setContextMenuPos({ x: e.clientX, y: e.clientY });
+      setSelectedApp(app);
+      setIsContextMenuOpen(true);
+    }, 500);
+  };
+
+  const handlePointerUp = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, app: any) => {
+    e.preventDefault();
+    setContextMenuPos({ x: e.clientX, y: e.clientY });
+    setSelectedApp(app);
+    setIsContextMenuOpen(true);
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -55,6 +82,8 @@ export function AppLauncher({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     }
     
     try {
+      // If it's a native app, open the Terminal and run it
+      openWindow('terminal', 'Arcade Terminal', 'terminal');
       await fetch('/api/system/apps/launch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -126,6 +155,10 @@ export function AppLauncher({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.01 }}
                       onClick={() => launchApp(app)}
+                      onPointerDown={(e) => handlePointerDown(e, app)}
+                      onPointerUp={handlePointerUp}
+                      onPointerLeave={handlePointerUp}
+                      onContextMenu={(e) => handleContextMenu(e, app)}
                       className="flex flex-col items-center justify-start group p-2 rounded-2xl hover:bg-white/10 transition-colors"
                     >
                       <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mb-2 shadow-sm group-hover:scale-110 transition-transform duration-200">
@@ -147,6 +180,20 @@ export function AppLauncher({ isOpen, onClose }: { isOpen: boolean; onClose: () 
           </motion.div>
         </>
       )}
+      <ContextMenu
+        x={contextMenuPos.x}
+        y={contextMenuPos.y}
+        isOpen={isContextMenuOpen}
+        onClose={() => setIsContextMenuOpen(false)}
+        items={[
+          { label: 'Open', icon: <ExternalLink className="w-4 h-4" />, onClick: () => launchApp(selectedApp) },
+          { 
+            label: pers?.dockApps?.some((a: any) => a.name === selectedApp?.name) ? 'Unpin from shelf' : 'Pin to shelf', 
+            icon: pers?.dockApps?.some((a: any) => a.name === selectedApp?.name) ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />, 
+            onClick: () => onTogglePin(selectedApp) 
+          },
+        ] as ContextMenuItem[]}
+      />
     </AnimatePresence>
   );
 }

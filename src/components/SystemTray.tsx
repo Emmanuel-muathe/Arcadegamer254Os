@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Battery, BatteryCharging, BatteryFull, BatteryLow, BatteryMedium, BatteryWarning, Wifi, WifiOff, Clock, Settings as SettingsIcon, Package, Activity, Terminal, Chrome, Music, Video, Image as ImageIcon, Folder, Mail, Play, Box, Circle, LayoutGrid } from 'lucide-react';
 import { format } from 'date-fns';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useWindowManager } from '../contexts/WindowManagerContext';
 import { AppLauncher } from './AppLauncher';
 import { QuickSettings } from './QuickSettings';
+import { ContextMenu, ContextMenuItem } from './ContextMenu';
 import { getAppIcon, AIcon } from '../utils/icons';
+import { getEmbedUrl } from '../utils/url';
+import { Pin, PinOff, X, ExternalLink, Info } from 'lucide-react';
 
 export function SystemTray() {
-  const { windows, openWindow, focusWindow, overviewMode, setOverviewMode } = useWindowManager();
+  const { windows, openWindow, focusWindow, closeWindow, overviewMode, setOverviewMode } = useWindowManager();
   const [time, setTime] = useState(new Date());
   const [battery, setBattery] = useState<{ capacity: number; status: string; device: string } | null>(null);
   const [wifiNetworks, setWifiNetworks] = useState<any[]>([]);
@@ -16,9 +19,55 @@ export function SystemTray() {
   const [batteryError, setBatteryError] = useState<string | null>(null);
   const [isLauncherOpen, setIsLauncherOpen] = useState(false);
   const [isQuickSettingsOpen, setIsQuickSettingsOpen] = useState(false);
-  const [pers, setPers] = useState<any>({ dockPosition: 'Bottom', dockAutoHide: false });
+  const [pers, setPers] = useState<any>({ dockPosition: 'Bottom', dockAutoHide: false, dockApps: [] });
   const [hoveredWindow, setHoveredWindow] = useState<string | null>(null);
   const [isDockHovered, setIsDockHovered] = useState(false);
+
+  const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
+  const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
+  const [selectedApp, setSelectedApp] = useState<any>(null);
+  const longPressTimer = useRef<any>(null);
+
+  const handlePointerDown = (e: React.PointerEvent, app: any) => {
+    longPressTimer.current = setTimeout(() => {
+      setContextMenuPos({ x: e.clientX, y: e.clientY });
+      setSelectedApp(app);
+      setIsContextMenuOpen(true);
+    }, 500);
+  };
+
+  const handlePointerUp = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+  };
+
+  const togglePin = async (app: any) => {
+    const isPinned = pers.dockApps?.some((a: any) => a.name === app.name);
+    let newDockApps = [];
+    if (isPinned) {
+      newDockApps = pers.dockApps.filter((a: any) => a.name !== app.name);
+    } else {
+      newDockApps = [...(pers.dockApps || []), app];
+    }
+
+    try {
+      const res = await fetch('/api/system/personalization', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dockApps: newDockApps })
+      });
+      const data = await res.json();
+      setPers(data);
+    } catch (e) {
+      console.error('Failed to update dock apps', e);
+    }
+  };
+
+  const closeAllWindows = (component: string) => {
+    const wins = windows.filter(w => w.component === component);
+    wins.forEach(w => closeWindow(w.id));
+  };
 
   // Fetch Personalization
   useEffect(() => {
@@ -96,25 +145,25 @@ export function SystemTray() {
   };
 
   const getHitAreaClasses = () => {
-    let base = "fixed z-50 flex justify-center ";
+    let base = "fixed z-50 flex ";
     let transform = "";
     
     switch (pers.dockPosition) {
       case 'Top':
-        base += "w-full top-0 h-16";
+        base += "w-full top-0 h-12";
         transform = pers.dockAutoHide && !isDockHovered && !isLauncherOpen && !isQuickSettingsOpen ? '-translate-y-full' : 'translate-y-0';
         break;
       case 'Left':
-        base += "h-full left-0 w-16 flex-col items-center";
+        base += "h-full left-0 w-12 flex-col";
         transform = pers.dockAutoHide && !isDockHovered && !isLauncherOpen && !isQuickSettingsOpen ? '-translate-x-full' : 'translate-x-0';
         break;
       case 'Right':
-        base += "h-full right-0 w-16 flex-col items-center";
+        base += "h-full right-0 w-12 flex-col";
         transform = pers.dockAutoHide && !isDockHovered && !isLauncherOpen && !isQuickSettingsOpen ? 'translate-x-full' : 'translate-x-0';
         break;
       case 'Bottom':
       default:
-        base += "w-full bottom-0 h-16";
+        base += "w-full bottom-0 h-12";
         transform = pers.dockAutoHide && !isDockHovered && !isLauncherOpen && !isQuickSettingsOpen ? 'translate-y-full' : 'translate-y-0';
         break;
     }
@@ -123,16 +172,18 @@ export function SystemTray() {
   };
 
   const getDockClasses = () => {
-    let base = "bg-gray-900/80 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-full flex items-center ";
+    let base = "bg-gray-900/90 backdrop-blur-2xl flex items-center w-full h-full ";
     
     switch (pers.dockPosition) {
       case 'Left':
+        return base + "flex-col border-r border-white/10 py-2";
       case 'Right':
-        return base + "flex-col w-12 py-2 mx-2 space-y-2";
+        return base + "flex-col border-l border-white/10 py-2";
       case 'Top':
+        return base + "border-b border-white/10 px-2";
       case 'Bottom':
       default:
-        return base + "h-12 px-2 mt-2 space-x-2";
+        return base + "border-t border-white/10 px-2";
     }
   };
 
@@ -154,6 +205,27 @@ export function SystemTray() {
     }
   };
 
+  const launchApp = (app: any) => {
+    if (app.exec.startsWith('internal:')) {
+      const component = app.exec.split(':')[1];
+      openWindow(component, app.name, component);
+      return;
+    }
+    
+    if (app.exec.startsWith('web:')) {
+      const url = app.exec.split('web:')[1];
+      const embedUrl = getEmbedUrl(url);
+      openWindow(`webapp-${app.name}`, app.name, 'webapp', embedUrl);
+      return;
+    }
+    
+    fetch('/api/system/apps/launch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ exec: app.exec })
+    }).catch(e => console.error(e));
+  };
+
   // Group windows by component to show multiple instances
   const groupedWindows = windows.reduce((acc, win) => {
     if (!acc[win.component]) {
@@ -162,6 +234,14 @@ export function SystemTray() {
     acc[win.component].push(win);
     return acc;
   }, {} as Record<string, any[]>);
+
+  const dockApps = pers.dockApps || [
+    { name: "Arcade Terminal", exec: "internal:terminal", icon: "terminal" },
+    { name: "App Store", exec: "internal:appstore", icon: "store" },
+    { name: "File Explorer", exec: "internal:files", icon: "folder" },
+    { name: "Arcade Browser", exec: "internal:browser", icon: "browser" },
+    { name: "Settings", exec: "internal:settings", icon: "settings" }
+  ];
 
   return (
     <>
@@ -172,59 +252,119 @@ export function SystemTray() {
       >
         <div className={getDockClasses()}>
           
-          {/* Launcher Button (Chrome OS style circle) */}
-          <button 
-            onClick={() => setIsLauncherOpen(!isLauncherOpen)}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all mx-1 ${isLauncherOpen ? 'bg-white/20' : 'hover:bg-white/10'}`}
-          >
-            <AIcon className="w-6 h-6 text-blue-500" />
-          </button>
+          {/* Left/Top Section: Launcher & Overview */}
+          <div className={`flex ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'flex-col space-y-2' : 'items-center space-x-2'} z-10`}>
+            {/* Launcher Button (Chrome OS style circle) */}
+            <button 
+              onClick={() => setIsLauncherOpen(!isLauncherOpen)}
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${isLauncherOpen ? 'bg-white/20' : 'hover:bg-white/10'}`}
+            >
+              <AIcon className="w-5 h-5 text-blue-500" />
+            </button>
 
-          {/* Overview Mode Button (Square thing) */}
-          <button 
-            onClick={() => setOverviewMode(!overviewMode)}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all mx-1 ${overviewMode ? 'bg-white/30 scale-110' : 'hover:bg-white/20 hover:scale-110'}`}
-            title="Overview Mode (F5) - View all open windows"
-          >
-            <LayoutGrid className="w-4 h-4 text-white" />
-          </button>
+            {/* Overview Mode Button */}
+            <button 
+              onClick={() => setOverviewMode(!overviewMode)}
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${overviewMode ? 'bg-white/30 scale-110' : 'hover:bg-white/20 hover:scale-110'}`}
+              title="Overview Mode (F5) - View all open windows"
+            >
+              <LayoutGrid className="w-4 h-4 text-white" />
+            </button>
+          </div>
 
-          {/* Divider */}
-          <div className={`bg-white/10 ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'w-6 h-px my-2' : 'w-px h-6 mx-2'}`}></div>
-
-          {/* Open Apps */}
-          <div className={`flex ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'flex-col space-y-1' : 'items-center space-x-1'}`}>
-            {(Object.entries(groupedWindows) as [string, any[]][]).map(([component, wins]) => {
+          {/* Center Section: Apps */}
+          <div className={`flex-1 flex justify-center ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'flex-col items-center py-4' : 'items-center px-4'}`}>
+            <div className={`flex ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'flex-col space-y-1' : 'items-center space-x-1'}`}>
+              {dockApps.map((app: any, i: number) => {
+              const component = app.exec.startsWith('internal:') ? app.exec.split(':')[1] : app.exec.startsWith('web:') ? `webapp-${app.name}` : app.exec;
+              const wins = groupedWindows[component] || [];
               const isActive = wins.some(w => w.isFocused);
-              const mainWin = wins[0];
+              const isRunning = wins.length > 0;
+              
+              const isPinned = pers.dockApps?.some((a: any) => a.name === app.name);
               
               return (
                 <div 
-                  key={component}
+                  key={`dock-${i}`}
                   className="relative group flex flex-col items-center"
-                  onMouseEnter={() => setHoveredWindow(component)}
+                  onMouseEnter={() => setHoveredWindow(app.name)}
                   onMouseLeave={() => setHoveredWindow(null)}
+                  onPointerDown={(e) => handlePointerDown(e, app)}
+                  onPointerUp={handlePointerUp}
+                  onPointerLeave={handlePointerUp}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setContextMenuPos({ x: e.clientX, y: e.clientY });
+                    setSelectedApp(app);
+                    setIsContextMenuOpen(true);
+                  }}
                 >
                   <button
                     onClick={() => {
-                      if (isActive) {
-                        // If active, minimize all
-                        // (Requires minimize function in context, for now just focus)
-                        focusWindow(mainWin.id);
+                      if (isRunning) {
+                        focusWindow(wins[0].id);
                       } else {
-                        focusWindow(mainWin.id);
+                        launchApp(app);
                       }
                     }}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${isActive ? 'bg-white/20 scale-110' : 'hover:bg-white/10 hover:scale-110'}`}
+                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 ${isActive ? 'bg-white/20 scale-110' : 'hover:bg-white/10 hover:scale-110'}`}
+                  >
+                    {getAppIcon(app)}
+                  </button>
+                  
+                  {/* Active indicator */}
+                  {isRunning && (
+                    <div className={`absolute ${pers.dockPosition === 'Left' ? '-left-1 top-1/2 -translate-y-1/2' : pers.dockPosition === 'Right' ? '-right-1 top-1/2 -translate-y-1/2' : pers.dockPosition === 'Top' ? '-top-1 left-1/2 -translate-x-1/2' : '-bottom-1 left-1/2 -translate-x-1/2'} w-1 h-1 rounded-full transition-all ${isActive ? 'bg-white scale-100' : 'bg-white/50 scale-75 group-hover:scale-100'}`} />
+                  )}
+
+                  {/* Tooltip */}
+                  {hoveredWindow === app.name && !isContextMenuOpen && (
+                    <div className={`absolute ${pers.dockPosition === 'Left' ? 'left-full ml-3 top-1/2 -translate-y-1/2' : pers.dockPosition === 'Right' ? 'right-full mr-3 top-1/2 -translate-y-1/2' : pers.dockPosition === 'Top' ? 'top-full mt-3 left-1/2 -translate-x-1/2' : 'bottom-full mb-3 left-1/2 -translate-x-1/2'} px-3 py-1.5 bg-gray-900/90 backdrop-blur-md text-white text-xs rounded-lg shadow-xl whitespace-nowrap border border-white/10 pointer-events-none z-50`}>
+                      {app.name} {wins.length > 1 ? `(${wins.length})` : ''}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Running apps not in dock */}
+            {(Object.entries(groupedWindows) as [string, any[]][]).map(([component, wins]) => {
+              const pinnedApp = dockApps.find((app: any) => {
+                const appComp = app.exec.startsWith('internal:') ? app.exec.split(':')[1] : app.exec.startsWith('web:') ? `webapp-${app.name}` : app.exec;
+                return appComp === component;
+              });
+              if (pinnedApp) return null;
+
+              const isActive = wins.some(w => w.isFocused);
+              const mainWin = wins[0];
+              const app = { name: mainWin.title, exec: mainWin.component === 'webapp' ? `web:${mainWin.url}` : `internal:${mainWin.component}`, icon: 'box' };
+              
+              return (
+                <div 
+                  key={`running-${component}`}
+                  className="relative group flex flex-col items-center"
+                  onMouseEnter={() => setHoveredWindow(component)}
+                  onMouseLeave={() => setHoveredWindow(null)}
+                  onPointerDown={(e) => handlePointerDown(e, app)}
+                  onPointerUp={handlePointerUp}
+                  onPointerLeave={handlePointerUp}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setContextMenuPos({ x: e.clientX, y: e.clientY });
+                    setSelectedApp(app);
+                    setIsContextMenuOpen(true);
+                  }}
+                >
+                  <button
+                    onClick={() => focusWindow(mainWin.id)}
+                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 ${isActive ? 'bg-white/20 scale-110' : 'hover:bg-white/10 hover:scale-110'}`}
                   >
                     {getAppIconComponent(component)}
                   </button>
                   
-                  {/* Chrome OS style active indicator (dot underneath) */}
                   <div className={`absolute ${pers.dockPosition === 'Left' ? '-left-1 top-1/2 -translate-y-1/2' : pers.dockPosition === 'Right' ? '-right-1 top-1/2 -translate-y-1/2' : pers.dockPosition === 'Top' ? '-top-1 left-1/2 -translate-x-1/2' : '-bottom-1 left-1/2 -translate-x-1/2'} w-1 h-1 rounded-full transition-all ${isActive ? 'bg-white scale-100' : 'bg-white/50 scale-75 group-hover:scale-100'}`} />
 
-                  {/* Tooltip */}
-                  {hoveredWindow === component && (
+                  {hoveredWindow === component && !isContextMenuOpen && (
                     <div className={`absolute ${pers.dockPosition === 'Left' ? 'left-full ml-3 top-1/2 -translate-y-1/2' : pers.dockPosition === 'Right' ? 'right-full mr-3 top-1/2 -translate-y-1/2' : pers.dockPosition === 'Top' ? 'top-full mt-3 left-1/2 -translate-x-1/2' : 'bottom-full mb-3 left-1/2 -translate-x-1/2'} px-3 py-1.5 bg-gray-900/90 backdrop-blur-md text-white text-xs rounded-lg shadow-xl whitespace-nowrap border border-white/10 pointer-events-none z-50`}>
                       {mainWin.title} {wins.length > 1 ? `(${wins.length})` : ''}
                     </div>
@@ -233,26 +373,55 @@ export function SystemTray() {
               );
             })}
           </div>
+        </div>
 
-          {/* Spacer to push quick settings to the end */}
-          <div className="flex-1 min-w-[20px] min-h-[20px]"></div>
-
-          {/* Quick Settings Area */}
-          <button 
-            onClick={() => setIsQuickSettingsOpen(!isQuickSettingsOpen)}
-            className={`px-3 rounded-full flex items-center justify-center transition-all ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'w-10 h-auto py-3 flex-col space-y-2' : 'h-10 space-x-3 ml-2'} ${isQuickSettingsOpen ? 'bg-white/20' : 'hover:bg-white/10 bg-white/5'}`}
-          >
-            <div className={`flex items-center text-gray-300 ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'flex-col space-y-2' : 'space-x-2'}`}>
-              {wifiError ? <WifiOff className="w-4 h-4 text-gray-500" /> : <Wifi className="w-4 h-4" />}
-              {renderBatteryIcon()}
-            </div>
-            <span className={`text-sm font-medium text-white ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'text-xs' : ''}`}>{format(time, 'h:mm')}</span>
-          </button>
+        {/* Right/Bottom Section: Quick Settings */}
+          <div className={`flex justify-end ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'flex-col items-center pb-2' : 'items-center'} z-10`}>
+            <button 
+              onClick={() => setIsQuickSettingsOpen(!isQuickSettingsOpen)}
+              className={`px-3 rounded-full flex items-center justify-center transition-all ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'w-10 h-auto py-3 flex-col space-y-2' : 'h-9 space-x-3'} ${isQuickSettingsOpen ? 'bg-white/20' : 'hover:bg-white/10 bg-white/5'}`}
+            >
+              <div className={`flex items-center text-gray-300 ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'flex-col space-y-2' : 'space-x-2'}`}>
+                {wifiError ? <WifiOff className="w-4 h-4 text-gray-500" /> : <Wifi className="w-4 h-4" />}
+                {renderBatteryIcon()}
+              </div>
+              <span className={`text-sm font-medium text-white ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'text-xs' : ''}`}>{format(time, 'h:mm')}</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      <AppLauncher isOpen={isLauncherOpen} onClose={() => setIsLauncherOpen(false)} />
+      <AppLauncher 
+        isOpen={isLauncherOpen} 
+        onClose={() => setIsLauncherOpen(false)} 
+        pers={pers}
+        onTogglePin={togglePin}
+      />
       <QuickSettings isOpen={isQuickSettingsOpen} onClose={() => setIsQuickSettingsOpen(false)} position={pers.dockPosition || 'Bottom'} />
+
+      <ContextMenu
+        x={contextMenuPos.x}
+        y={contextMenuPos.y}
+        isOpen={isContextMenuOpen}
+        onClose={() => setIsContextMenuOpen(false)}
+        items={[
+          { label: 'Open', icon: <ExternalLink className="w-4 h-4" />, onClick: () => launchApp(selectedApp) },
+          { 
+            label: pers.dockApps?.some((a: any) => a.name === selectedApp?.name) ? 'Unpin from shelf' : 'Pin to shelf', 
+            icon: pers.dockApps?.some((a: any) => a.name === selectedApp?.name) ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />, 
+            onClick: () => togglePin(selectedApp) 
+          },
+          { 
+            label: 'Close all', 
+            icon: <X className="w-4 h-4" />, 
+            variant: 'danger', 
+            onClick: () => {
+              const component = selectedApp.exec.startsWith('internal:') ? selectedApp.exec.split(':')[1] : selectedApp.exec.startsWith('web:') ? `webapp-${selectedApp.name}` : selectedApp.exec;
+              closeAllWindows(component);
+            } 
+          },
+        ] as ContextMenuItem[]}
+      />
     </>
   );
 }

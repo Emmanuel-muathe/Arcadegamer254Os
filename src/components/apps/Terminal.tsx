@@ -3,7 +3,7 @@ import { Terminal as TerminalIcon, Plus, X } from 'lucide-react';
 
 export function Terminal() {
   const [history, setHistory] = useState<{ type: 'input' | 'output', text: string }[]>([
-    { type: 'output', text: 'Welcome to Penguin (Linux container)' },
+    { type: 'output', text: 'Welcome to Arcade Terminal' },
     { type: 'output', text: 'Type "help" for a list of available commands.' }
   ]);
   const [input, setInput] = useState('');
@@ -20,7 +20,7 @@ export function Terminal() {
 
     const cmd = input.trim();
     setInput('');
-    setHistory(prev => [...prev, { type: 'input', text: `arcadegamer254@penguin:~$ ${cmd}` }]);
+    setHistory(prev => [...prev, { type: 'input', text: `arcadegamer254@arcade:~$ ${cmd}` }]);
 
     if (cmd === 'clear') {
       setHistory([]);
@@ -48,7 +48,7 @@ export function Terminal() {
       <div className="flex items-center bg-[#292a2d] h-10 border-b border-black/20 px-2 select-none">
         <div className="flex items-center bg-[#3c4043] h-8 px-4 rounded-t-md min-w-[150px] max-w-[200px] border-t border-x border-white/10 relative group">
           <TerminalIcon className="w-4 h-4 text-blue-400 mr-2" />
-          <span className="text-sm text-gray-200 truncate flex-1">penguin</span>
+          <span className="text-sm text-gray-200 truncate flex-1">Arcade Terminal</span>
           <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded-full transition-opacity">
             <X className="w-3 h-3 text-gray-400" />
           </button>
@@ -70,7 +70,7 @@ export function Terminal() {
           <div ref={bottomRef} />
         </div>
         <form onSubmit={handleCommand} className="flex items-center mt-1">
-          <span className="text-green-400 font-bold mr-2">arcadegamer254@penguin:~$</span>
+          <span className="text-green-400 font-bold mr-2">arcadegamer254@arcade:~$</span>
           <input
             type="text"
             value={input}
