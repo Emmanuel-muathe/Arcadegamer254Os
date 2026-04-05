@@ -1,0 +1,5 @@
+{
+  "name": "Arch Linux React DE (Enhanced)",
+  "description": "A custom Desktop Environment and OS Shell built with React, featuring an App Store with 30+ apps, PulseAudio integration, and CI/CD for ISO building.",
+  "requestFramePermissions": []
+}

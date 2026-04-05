@@ -1,0 +1,20 @@
+[Unit]
+Description=A254OS Hardware Abstraction Layer (HAL) WebSocket Server
+After=network.target NetworkManager.service
+Requires=NetworkManager.service
+
+[Service]
+Type=simple
+# Adjust the ExecStart path to where you compile and place the binary in your Arch ISO
+ExecStart=/usr/local/bin/hal_server
+Restart=on-failure
+RestartSec=5
+User=root
+Group=root
+# Security/Sandboxing (Optional but recommended)
+ProtectSystem=full
+# We need access to /sys/class/backlight and /mnt
+ReadWritePaths=/sys/class/backlight /mnt
+
+[Install]
+WantedBy=multi-user.target
