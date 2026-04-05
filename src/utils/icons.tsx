@@ -1,5 +1,5 @@
 import React from 'react';
-import { Terminal, Settings as SettingsIcon, Package, Activity, Chrome, Music, Video, Image as ImageIcon, Folder, Mail, Play, Box } from 'lucide-react';
+import { Terminal, Settings as SettingsIcon, Package, Activity, Chrome, Music, Video, Image as ImageIcon, Folder, Mail, Play, Box, File } from 'lucide-react';
 
 export const AIcon = ({ className = "w-8 h-8 text-blue-500" }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -20,6 +20,9 @@ export const getAppIcon = (app: any) => {
       // fallback
     }
   }
+
+  if (app.icon === 'file') return <File className="w-8 h-8 text-gray-300" />;
+  if (app.icon === 'folder') return <Folder className="w-8 h-8 text-blue-300" />;
 
   const name = app.name ? app.name.toLowerCase() : '';
   const exec = app.exec ? app.exec.toLowerCase() : '';

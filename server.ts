@@ -151,9 +151,16 @@ async function startServer() {
       } else if (action === 'create') {
         if (isDir) fs.mkdirSync(targetPath, { recursive: true });
         else fs.writeFileSync(targetPath, "");
-      } else if (action === 'rename') {
+      } else if (action === 'rename' || action === 'move') {
         if (!newPath) return res.status(400).json({ error: "New path required" });
         fs.renameSync(targetPath, newPath);
+      } else if (action === 'copy') {
+        if (!newPath) return res.status(400).json({ error: "New path required" });
+        if (fs.statSync(targetPath).isDirectory()) {
+          fs.cpSync(targetPath, newPath, { recursive: true });
+        } else {
+          fs.copyFileSync(targetPath, newPath);
+        }
       } else if (action === 'write') {
         fs.writeFileSync(targetPath, content || "", "utf-8");
       }
@@ -936,6 +943,39 @@ async function startServer() {
       await execAsync(`bluetoothctl connect ${mac}`);
       res.json({ success: true });
     } catch (error: any) { res.status(500).json({ error: error.message }); }
+  });
+
+  // --- SETTINGS: STARTUP ---
+  app.get("/api/system/startup", async (req, res) => {
+    try {
+      const autostartDir = path.join(process.env.HOME || "/root", ".config/autostart");
+      let apps: string[] = [];
+      if (fs.existsSync(autostartDir)) {
+        const files = fs.readdirSync(autostartDir).filter(f => f.endsWith('.desktop'));
+        apps = files.map(f => f.replace('.desktop', ''));
+      }
+      res.json({ apps });
+    } catch (e: any) {
+      res.json({ error: e.message });
+    }
+  });
+
+  // --- SETTINGS: PERMISSIONS ---
+  app.get("/api/system/permissions", async (req, res) => {
+    try {
+      res.json({ note: "Flatpak/Snap permissions are managed here.", apps: ["Firefox", "Spotify", "Discord"] });
+    } catch (e: any) {
+      res.json({ error: e.message });
+    }
+  });
+
+  // --- SETTINGS: LOCKSCREEN ---
+  app.get("/api/system/lockscreen", async (req, res) => {
+    try {
+      res.json({ status: "Screen lock is enabled." });
+    } catch (e: any) {
+      res.json({ error: e.message });
+    }
   });
 
   // Vite middleware for development

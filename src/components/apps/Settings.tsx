@@ -100,7 +100,7 @@ export function Settings() {
       if (activeTab === 'display' && !displayData) {
         fetch('/api/system/display').then(r => r.json()).then(setDisplayData);
       }
-      if (['appearance', 'wallpaper', 'fonts', 'dock'].includes(activeTab) && !persData) {
+      if (['appearance', 'wallpaper', 'fonts', 'dock', 'power', 'lockscreen'].includes(activeTab) && !persData) {
         fetch('/api/system/personalization').then(r => r.json()).then(setPersData);
       }
       if (activeTab === 'datetime' && !dateTimeData) {
@@ -502,10 +502,14 @@ export function Settings() {
                 </div>
                 <div className="bg-white/5 border border-white/10 p-6 rounded-2xl">
                   <h4 className="text-sm font-medium text-gray-400 mb-1">Power Mode</h4>
-                  <select className="w-full bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none mt-2">
-                    <option>Balanced</option>
-                    <option>Power Saver</option>
-                    <option>Performance</option>
+                  <select 
+                    value={persData?.powerMode || 'Balanced'}
+                    onChange={(e) => updatePers({ powerMode: e.target.value })}
+                    className="w-full bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none mt-2"
+                  >
+                    <option value="Balanced">Balanced</option>
+                    <option value="Power Saver">Power Saver</option>
+                    <option value="Performance">Performance</option>
                   </select>
                 </div>
               </div>
@@ -751,11 +755,15 @@ export function Settings() {
               <p className="text-gray-300 text-sm">{lockScreenData?.status || 'Loading...'}</p>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Screen Timeout</label>
-                <select className="w-full bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none appearance-none">
-                  <option>5 minutes</option>
-                  <option>10 minutes</option>
-                  <option>15 minutes</option>
-                  <option>Never</option>
+                <select 
+                  value={persData?.screenTimeout || '5 minutes'}
+                  onChange={(e) => updatePers({ screenTimeout: e.target.value })}
+                  className="w-full bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none appearance-none"
+                >
+                  <option value="5 minutes">5 minutes</option>
+                  <option value="10 minutes">10 minutes</option>
+                  <option value="15 minutes">15 minutes</option>
+                  <option value="Never">Never</option>
                 </select>
               </div>
             </div>

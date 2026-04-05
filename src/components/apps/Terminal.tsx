@@ -27,6 +27,23 @@ export function Terminal() {
       return;
     }
 
+    if (cmd === 'help') {
+      setHistory(prev => [
+        ...prev,
+        { type: 'output', text: 'Available commands:' },
+        { type: 'output', text: '  help       - Show this help message' },
+        { type: 'output', text: '  clear      - Clear the terminal screen' },
+        { type: 'output', text: '  date       - Show current date and time' },
+        { type: 'output', text: '  echo       - Print text to the terminal' },
+        { type: 'output', text: '  ls         - List directory contents' },
+        { type: 'output', text: '  pwd        - Print working directory' },
+        { type: 'output', text: '  whoami     - Print current user' },
+        { type: 'output', text: '  uname -a   - Print system information' },
+        { type: 'output', text: 'Note: You can run standard Linux commands here.' }
+      ]);
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch('/api/system/terminal', {

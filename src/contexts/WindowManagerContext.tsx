@@ -14,6 +14,7 @@ export interface WindowState {
   zIndex: number;
   status: WindowStatus;
   previousState?: { x: number; y: number; width: number; height: number };
+  alwaysOnTop?: boolean;
 }
 
 interface WindowManagerContextType {
@@ -27,6 +28,7 @@ interface WindowManagerContextType {
   minimizeWindow: (id: string) => void;
   restoreWindow: (id: string) => void;
   toggleMaximize: (id: string) => void;
+  toggleAlwaysOnTop: (id: string) => void;
 }
 
 const WindowManagerContext = createContext<WindowManagerContextType | undefined>(undefined);
@@ -109,11 +111,16 @@ export function WindowManagerProvider({ children }: { children: ReactNode }) {
     focusWindow(id);
   };
 
+  const toggleAlwaysOnTop = (id: string) => {
+    setWindows(prev => prev.map(w => w.id === id ? { ...w, alwaysOnTop: !w.alwaysOnTop } : w));
+    focusWindow(id);
+  };
+
   return (
     <WindowManagerContext.Provider value={{ 
       windows, overviewMode, setOverviewMode, 
       openWindow, closeWindow, focusWindow, updateWindow, 
-      minimizeWindow, restoreWindow, toggleMaximize 
+      minimizeWindow, restoreWindow, toggleMaximize, toggleAlwaysOnTop
     }}>
       {children}
     </WindowManagerContext.Provider>

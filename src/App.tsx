@@ -226,6 +226,34 @@ function Desktop() {
     }
   };
 
+  const handleDesktopDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('application/json'));
+      if (data.type === 'file') {
+        const file = data.file;
+        const newApp = {
+          name: file.name,
+          exec: `internal:files`,
+          icon: file.isDirectory ? 'folder' : 'file',
+          category: 'Shortcut',
+          path: file.path
+        };
+        
+        const newDesktopApps = [...(pers.desktopApps || []), newApp];
+        setPers({ ...pers, desktopApps: newDesktopApps });
+        
+        await fetch('/api/system/personalization', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ desktopApps: newDesktopApps })
+        });
+      }
+    } catch (err) {
+      // Ignore
+    }
+  };
+
   const renderComponent = (win: any) => {
     if (win.component === 'webapp') {
       return (
@@ -261,12 +289,18 @@ function Desktop() {
       <div 
         className="absolute inset-0 z-0 bg-cover bg-center transition-all duration-500 no-invert"
         style={{ backgroundImage: `url("${pers.wallpaper}")` }}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleDesktopDrop}
       >
         <div className="absolute inset-0 bg-black/20" />
       </div>
 
       {/* Desktop Icons */}
-      <div className="absolute inset-0 z-0 p-4 flex flex-col flex-wrap gap-4 content-start">
+      <div 
+        className="absolute inset-0 z-0 p-4 flex flex-col flex-wrap gap-4 content-start"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleDesktopDrop}
+      >
         {pers.desktopApps?.map((app: any, i: number) => {
           const component = app.exec.startsWith('internal:') ? app.exec.split(':')[1] : app.exec.startsWith('web:') ? `webapp-${app.name}` : app.exec;
           const isRunning = windows.some(w => w.component === component || w.id === component);

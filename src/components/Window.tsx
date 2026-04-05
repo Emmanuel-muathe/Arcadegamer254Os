@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, useAnimation } from 'motion/react';
 import { useWindowManager, WindowState } from '../contexts/WindowManagerContext';
-import { X, Square, Minus } from 'lucide-react';
+import { X, Square, Minus, Pin } from 'lucide-react';
 
 export function Window({ window, children, index = 0, totalWindows = 1 }: { window: WindowState, children: React.ReactNode, key?: React.Key, index?: number, totalWindows?: number }) {
-  const { closeWindow, focusWindow, updateWindow, minimizeWindow, toggleMaximize, overviewMode, setOverviewMode } = useWindowManager();
+  const { closeWindow, focusWindow, updateWindow, minimizeWindow, toggleMaximize, toggleAlwaysOnTop, overviewMode, setOverviewMode } = useWindowManager();
   const controls = useAnimation();
   const [isDragging, setIsDragging] = useState(false);
 
@@ -108,12 +108,20 @@ export function Window({ window, children, index = 0, totalWindows = 1 }: { wind
           focusWindow(window.id);
         }
       }}
-      style={{ zIndex: overviewMode ? 100 : window.zIndex }}
+      style={{ zIndex: overviewMode ? 100 : (window.alwaysOnTop ? window.zIndex + 1000 : window.zIndex) }}
       className={`absolute bg-gray-900 border border-gray-700 rounded-lg shadow-2xl overflow-hidden flex flex-col ${overviewMode ? 'cursor-pointer hover:ring-4 ring-blue-500 transition-shadow' : 'pointer-events-auto'}`}
     >
       <div className="window-handle h-10 bg-gray-800 flex items-center justify-between px-4 cursor-grab active:cursor-grabbing select-none border-b border-gray-700">
         <span className="text-sm font-semibold text-gray-200">{window.title}</span>
         <div className="flex items-center space-x-3">
+          <button 
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => toggleAlwaysOnTop(window.id)} 
+            className={`${window.alwaysOnTop ? 'text-blue-400' : 'text-gray-400'} hover:text-white transition-colors`}
+            title="Always on Top"
+          >
+            <Pin className="w-4 h-4" />
+          </button>
           <button 
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => minimizeWindow(window.id)} 

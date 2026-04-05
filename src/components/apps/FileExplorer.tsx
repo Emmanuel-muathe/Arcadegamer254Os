@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Folder, File, ChevronRight, ChevronLeft, Home, HardDrive, FileText, Image as ImageIcon, Music, Video, Archive, Code, Search, RefreshCw, AlertCircle, Plus, Trash2, Edit2, Save, Download, Clock, Terminal } from 'lucide-react';
+import { Folder, File, ChevronRight, ChevronLeft, Home, HardDrive, FileText, Image as ImageIcon, Music, Video, Archive, Code, Search, RefreshCw, AlertCircle, Plus, Trash2, Edit2, Save, Download, Clock, Terminal, Copy, Scissors, ClipboardPaste } from 'lucide-react';
 import { format } from 'date-fns';
 
 export function FileExplorer() {
@@ -17,6 +17,10 @@ export function FileExplorer() {
   const [showNewDialog, setShowNewDialog] = useState<'file' | 'folder' | null>(null);
   const [showRenameDialog, setShowRenameDialog] = useState<any | null>(null);
   const [dialogInput, setDialogInput] = useState('');
+  
+  const [clipboard, setClipboard] = useState<{ action: 'copy' | 'cut', file: any } | null>(null);
+  const [draggedFile, setDraggedFile] = useState<any | null>(null);
+  const [dragOverFile, setDragOverFile] = useState<any | null>(null);
 
   useEffect(() => {
     loadFiles(''); // Load home directory initially
@@ -134,6 +138,44 @@ export function FileExplorer() {
     }
   };
 
+  const handlePaste = (targetPath: string = currentPath) => {
+    if (!clipboard) return;
+    const newPath = `${targetPath}/${clipboard.file.name}`;
+    if (clipboard.action === 'copy') {
+      handleAction('copy', clipboard.file.path, newPath);
+    } else if (clipboard.action === 'cut') {
+      handleAction('move', clipboard.file.path, newPath);
+      setClipboard(null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetFolder: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverFile(null);
+    if (!draggedFile || !targetFolder.isDirectory || draggedFile.path === targetFolder.path) return;
+    
+    const newPath = `${targetFolder.path}/${draggedFile.name}`;
+    handleAction('move', draggedFile.path, newPath);
+    setDraggedFile(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, file?: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (file && file.isDirectory && file.path !== draggedFile?.path) {
+      setDragOverFile(file.path);
+    } else {
+      setDragOverFile(null);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverFile(null);
+  };
+
   const formatSize = (bytes: number) => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -226,6 +268,14 @@ export function FileExplorer() {
             <button onClick={() => { setDialogInput(''); setShowNewDialog('folder'); }} className="p-1.5 rounded hover:bg-gray-700 text-gray-300" title="New Folder">
               <Folder className="w-5 h-5" />
             </button>
+            <button 
+              onClick={handlePaste} 
+              disabled={!clipboard} 
+              className="p-1.5 rounded hover:bg-gray-700 text-gray-300 disabled:opacity-50 disabled:hover:bg-transparent" 
+              title="Paste"
+            >
+              <ClipboardPaste className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
@@ -310,13 +360,37 @@ export function FileExplorer() {
           )}
           
           {!error && fileContent === null && (
-            <div className="flex flex-col">
+            <div 
+              className="flex flex-col h-full"
+              onDragOver={handleDragOver}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (draggedFile) {
+                  const newPath = `${currentPath}/${draggedFile.name}`;
+                  handleAction('move', draggedFile.path, newPath);
+                  setDraggedFile(null);
+                }
+              }}
+            >
               {files.map((file, i) => (
                 <div 
                   key={i} 
                   onClick={() => handleItemClick(file)}
                   onContextMenu={(e) => handleContextMenu(e, file)}
-                  className="grid grid-cols-[minmax(200px,1fr)_100px_150px] gap-4 items-center px-2 py-2 hover:bg-blue-600/20 rounded cursor-pointer group"
+                  draggable
+                  onDragStart={(e) => {
+                    e.stopPropagation();
+                    setDraggedFile(file);
+                    e.dataTransfer.setData('application/json', JSON.stringify({ type: 'file', file }));
+                  }}
+                  onDragOver={file.isDirectory ? (e) => handleDragOver(e, file) : undefined}
+                  onDragLeave={file.isDirectory ? handleDragLeave : undefined}
+                  onDrop={file.isDirectory ? (e) => handleDrop(e, file) : undefined}
+                  className={`grid grid-cols-[minmax(200px,1fr)_100px_150px] gap-4 items-center px-2 py-2 rounded cursor-pointer group transition-colors ${
+                    clipboard?.action === 'cut' && clipboard.file.path === file.path ? 'opacity-50' : ''
+                  } ${
+                    dragOverFile === file.path ? 'bg-blue-600/40 border border-blue-500' : 'hover:bg-blue-600/20 border border-transparent'
+                  }`}
                 >
                   <div className="flex items-center gap-3 overflow-hidden">
                     {file.isDirectory ? <Folder className="w-5 h-5 text-blue-400 flex-shrink-0" /> : getFileIcon(file.name)}
@@ -352,6 +426,25 @@ export function FileExplorer() {
               <button 
                 className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-blue-600 flex items-center gap-2"
                 onClick={() => {
+                  setClipboard({ action: 'copy', file: contextMenu.file });
+                  setContextMenu(null);
+                }}
+              >
+                <Copy className="w-4 h-4" /> Copy
+              </button>
+              <button 
+                className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-blue-600 flex items-center gap-2"
+                onClick={() => {
+                  setClipboard({ action: 'cut', file: contextMenu.file });
+                  setContextMenu(null);
+                }}
+              >
+                <Scissors className="w-4 h-4" /> Cut
+              </button>
+              <div className="h-px bg-gray-700 my-1"></div>
+              <button 
+                className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-blue-600 flex items-center gap-2"
+                onClick={() => {
                   setDialogInput(contextMenu.file.name);
                   setShowRenameDialog(contextMenu.file);
                   setContextMenu(null);
@@ -370,6 +463,17 @@ export function FileExplorer() {
               >
                 <Trash2 className="w-4 h-4" /> Delete
               </button>
+              {clipboard && contextMenu.file.isDirectory && (
+                <>
+                  <div className="h-px bg-gray-700 my-1"></div>
+                  <button 
+                    className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-blue-600 flex items-center gap-2"
+                    onClick={() => { handlePaste(contextMenu.file.path); setContextMenu(null); }}
+                  >
+                    <ClipboardPaste className="w-4 h-4" /> Paste Into
+                  </button>
+                </>
+              )}
             </>
           ) : (
             <>
@@ -385,6 +489,17 @@ export function FileExplorer() {
               >
                 <File className="w-4 h-4" /> New File
               </button>
+              {clipboard && (
+                <>
+                  <div className="h-px bg-gray-700 my-1"></div>
+                  <button 
+                    className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-blue-600 flex items-center gap-2"
+                    onClick={() => { handlePaste(); setContextMenu(null); }}
+                  >
+                    <ClipboardPaste className="w-4 h-4" /> Paste
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>
