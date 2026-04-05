@@ -145,25 +145,25 @@ export function SystemTray() {
   };
 
   const getHitAreaClasses = () => {
-    let base = "fixed z-50 flex ";
+    let base = "fixed z-50 flex justify-center ";
     let transform = "";
     
     switch (pers.dockPosition) {
       case 'Top':
-        base += "w-full top-0 h-12";
+        base += "w-full top-0 h-16 items-start pt-2";
         transform = pers.dockAutoHide && !isDockHovered && !isLauncherOpen && !isQuickSettingsOpen ? '-translate-y-full' : 'translate-y-0';
         break;
       case 'Left':
-        base += "h-full left-0 w-12 flex-col";
+        base += "h-full left-0 w-16 flex-col items-center justify-center pl-2";
         transform = pers.dockAutoHide && !isDockHovered && !isLauncherOpen && !isQuickSettingsOpen ? '-translate-x-full' : 'translate-x-0';
         break;
       case 'Right':
-        base += "h-full right-0 w-12 flex-col";
+        base += "h-full right-0 w-16 flex-col items-center justify-center pr-2";
         transform = pers.dockAutoHide && !isDockHovered && !isLauncherOpen && !isQuickSettingsOpen ? 'translate-x-full' : 'translate-x-0';
         break;
       case 'Bottom':
       default:
-        base += "w-full bottom-0 h-12";
+        base += "w-full bottom-0 h-16 items-end pb-2";
         transform = pers.dockAutoHide && !isDockHovered && !isLauncherOpen && !isQuickSettingsOpen ? 'translate-y-full' : 'translate-y-0';
         break;
     }
@@ -172,18 +172,16 @@ export function SystemTray() {
   };
 
   const getDockClasses = () => {
-    let base = "bg-gray-900/90 backdrop-blur-2xl flex items-center w-full h-full ";
+    let base = "bg-gray-900/80 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-3xl flex items-center ";
     
     switch (pers.dockPosition) {
       case 'Left':
-        return base + "flex-col border-r border-white/10 py-2";
       case 'Right':
-        return base + "flex-col border-l border-white/10 py-2";
+        return base + "flex-col py-2 px-2 space-y-2";
       case 'Top':
-        return base + "border-b border-white/10 px-2";
       case 'Bottom':
       default:
-        return base + "border-t border-white/10 px-2";
+        return base + "px-2 py-2 space-x-2 h-14";
     }
   };
 
@@ -252,30 +250,29 @@ export function SystemTray() {
       >
         <div className={getDockClasses()}>
           
-          {/* Left/Top Section: Launcher & Overview */}
-          <div className={`flex ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'flex-col space-y-2' : 'items-center space-x-2'} z-10`}>
-            {/* Launcher Button (Chrome OS style circle) */}
-            <button 
-              onClick={() => setIsLauncherOpen(!isLauncherOpen)}
-              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${isLauncherOpen ? 'bg-white/20' : 'hover:bg-white/10'}`}
-            >
-              <AIcon className="w-5 h-5 text-blue-500" />
-            </button>
+          {/* Launcher Button */}
+          <button 
+            onClick={() => setIsLauncherOpen(!isLauncherOpen)}
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isLauncherOpen ? 'bg-white/20' : 'hover:bg-white/10'}`}
+          >
+            <AIcon className="w-6 h-6 text-blue-500" />
+          </button>
 
-            {/* Overview Mode Button */}
-            <button 
-              onClick={() => setOverviewMode(!overviewMode)}
-              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${overviewMode ? 'bg-white/30 scale-110' : 'hover:bg-white/20 hover:scale-110'}`}
-              title="Overview Mode (F5) - View all open windows"
-            >
-              <LayoutGrid className="w-4 h-4 text-white" />
-            </button>
-          </div>
+          {/* Overview Mode Button */}
+          <button 
+            onClick={() => setOverviewMode(!overviewMode)}
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${overviewMode ? 'bg-white/30 scale-110' : 'hover:bg-white/20 hover:scale-110'}`}
+            title="Overview Mode (F5) - View all open windows"
+          >
+            <LayoutGrid className="w-4 h-4 text-white" />
+          </button>
 
-          {/* Center Section: Apps */}
-          <div className={`flex-1 flex justify-center ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'flex-col items-center py-4' : 'items-center px-4'}`}>
-            <div className={`flex ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'flex-col space-y-1' : 'items-center space-x-1'}`}>
-              {dockApps.map((app: any, i: number) => {
+          {/* Divider */}
+          <div className={`bg-white/10 ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'w-8 h-px my-1' : 'w-px h-8 mx-1'}`}></div>
+
+          {/* Apps */}
+          <div className={`flex ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'flex-col space-y-1' : 'items-center space-x-1'}`}>
+            {dockApps.map((app: any, i: number) => {
               const component = app.exec.startsWith('internal:') ? app.exec.split(':')[1] : app.exec.startsWith('web:') ? `webapp-${app.name}` : app.exec;
               const wins = groupedWindows[component] || [];
               const isActive = wins.some(w => w.isFocused);
@@ -307,7 +304,7 @@ export function SystemTray() {
                         launchApp(app);
                       }
                     }}
-                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 ${isActive ? 'bg-white/20 scale-110' : 'hover:bg-white/10 hover:scale-110'}`}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${isActive ? 'bg-white/20 scale-110' : 'hover:bg-white/10 hover:scale-110'}`}
                   >
                     {getAppIcon(app)}
                   </button>
@@ -357,7 +354,7 @@ export function SystemTray() {
                 >
                   <button
                     onClick={() => focusWindow(mainWin.id)}
-                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 ${isActive ? 'bg-white/20 scale-110' : 'hover:bg-white/10 hover:scale-110'}`}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${isActive ? 'bg-white/20 scale-110' : 'hover:bg-white/10 hover:scale-110'}`}
                   >
                     {getAppIconComponent(component)}
                   </button>
@@ -373,21 +370,21 @@ export function SystemTray() {
               );
             })}
           </div>
-        </div>
 
-        {/* Right/Bottom Section: Quick Settings */}
-          <div className={`flex justify-end ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'flex-col items-center pb-2' : 'items-center'} z-10`}>
-            <button 
-              onClick={() => setIsQuickSettingsOpen(!isQuickSettingsOpen)}
-              className={`px-3 rounded-full flex items-center justify-center transition-all ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'w-10 h-auto py-3 flex-col space-y-2' : 'h-9 space-x-3'} ${isQuickSettingsOpen ? 'bg-white/20' : 'hover:bg-white/10 bg-white/5'}`}
-            >
-              <div className={`flex items-center text-gray-300 ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'flex-col space-y-2' : 'space-x-2'}`}>
-                {wifiError ? <WifiOff className="w-4 h-4 text-gray-500" /> : <Wifi className="w-4 h-4" />}
-                {renderBatteryIcon()}
-              </div>
-              <span className={`text-sm font-medium text-white ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'text-xs' : ''}`}>{format(time, 'h:mm')}</span>
-            </button>
-          </div>
+          {/* Divider */}
+          <div className={`bg-white/10 ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'w-8 h-px my-1' : 'w-px h-8 mx-1'}`}></div>
+
+          {/* Quick Settings */}
+          <button 
+            onClick={() => setIsQuickSettingsOpen(!isQuickSettingsOpen)}
+            className={`px-3 rounded-full flex items-center justify-center transition-all ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'w-10 h-auto py-3 flex-col space-y-2' : 'h-10 space-x-3'} ${isQuickSettingsOpen ? 'bg-white/20' : 'hover:bg-white/10 bg-white/5'}`}
+          >
+            <div className={`flex items-center text-gray-300 ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'flex-col space-y-2' : 'space-x-2'}`}>
+              {wifiError ? <WifiOff className="w-4 h-4 text-gray-500" /> : <Wifi className="w-4 h-4" />}
+              {renderBatteryIcon()}
+            </div>
+            <span className={`text-sm font-medium text-white ${pers.dockPosition === 'Left' || pers.dockPosition === 'Right' ? 'text-xs' : ''}`}>{format(time, 'h:mm')}</span>
+          </button>
         </div>
       </div>
 
